@@ -1,0 +1,21 @@
+# Note: This is intended for local development usage. If you're reusing
+# it for a different environment, make sure to update conveniently.
+# This will be useful when we move all code to a separate directory.
+
+# Directories
+venv/
+.git/
+.idea/
+.vscode/
+
+# Files
+.env
+.coveragerc
+.flake8
+.gitignore
+.isort.cfg
+.pre-commit-config.yaml
+bitbucket-pipelines.yml
+Dockerfile*
+env.template
+README.md
