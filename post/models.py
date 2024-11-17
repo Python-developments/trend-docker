@@ -53,16 +53,35 @@ class Post(models.Model):
 
     def get_top_reactions(self, top_n=3):
         """
-        Returns the top N reactions for the post.
+        Returns the top N reactions for the post, including reaction_type, a single user, and count for each reaction type.
         """
-        reaction_counts = self.post_reactions.values('reaction_type').annotate(
-            count=Count('reaction_type')
-        ).order_by('-count')[:top_n]
+        reaction_groups = (
+            self.post_reactions.values('reaction_type')  # Group by reaction type
+            .annotate(count=Count('reaction_type'))  # Count occurrences for sorting
+            .order_by('-count')[:top_n]  # Order by count and limit to top_n
+        )
 
-        return [
-            {"reaction_type": r["reaction_type"], "count": r["count"]}
-            for r in reaction_counts
-        ]
+        top_reactions = []
+        for reaction_group in reaction_groups:
+            reaction_type = reaction_group["reaction_type"]
+            count = reaction_group["count"]  # Get the count for this reaction type
+            user = (
+                self.post_reactions.filter(reaction_type=reaction_type)
+                .select_related('user')  # Optimize query for user
+                .values_list('user__username', flat=True)
+                .first()  # Get the first username
+            )
+            top_reactions.append({
+                "reaction_type": reaction_type,
+                "count": count,  # Include the count
+                "user": user  # Single user instead of a list
+            })
+
+        return top_reactions
+
+
+
+
 
     def reaction_list(self):
         """

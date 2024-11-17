@@ -89,7 +89,7 @@ class PostSerializer(serializers.ModelSerializer):
         return obj.total_reaction_count() 
     
     def get_top_3_reactions(self, obj):
-    # Call get_top_reactions instead of top_reactions_display for structured data
+        
         return obj.get_top_reactions()
 
     

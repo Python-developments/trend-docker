@@ -2,7 +2,7 @@ import os
 from django.db import models
 from authentication.models import CustomUser
 from django.db.models.signals import post_save
-from reactions.models import Reaction  # Import the Reaction model
+from reactions.models import Reaction
 from django.dispatch import receiver
 from django.core.exceptions import ValidationError
 
