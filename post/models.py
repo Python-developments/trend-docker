@@ -52,19 +52,36 @@ class Post(models.Model):
     #         return {"action": "added", "reaction_type": reaction_type}
     def add_or_update_reaction(self, user, reaction_type):
         """
-        Adds or updates a reaction for this post by the given user and returns the full object.
+        Add, update, or remove a reaction for this post based on user input.
+        If 'reaction_type' is 'cancel', it explicitly removes the reaction.
         """
+        # Check if the user already reacted to this post
         existing_reaction = Reaction.objects.filter(post=self, user=user).first()
 
-        if existing_reaction:
-            existing_reaction.reaction_type = reaction_type
-            existing_reaction.save()
-            action = "updated"
+        if reaction_type == "cancel":
+            # If the reaction_type is "cancel", remove the existing reaction
+            if existing_reaction:
+                existing_reaction.delete()
+                action = "removed"
+            else:
+                action = "none"  # No action taken because no reaction exists
+            reaction_type = None  # No active reaction after removal
         else:
-            Reaction.objects.create(post=self, user=user, reaction_type=reaction_type)
-            action = "added"
+            if existing_reaction:
+                if existing_reaction.reaction_type == reaction_type:
+                    # If the same reaction is clicked, return the current state (no-op)
+                    action = "no_change"
+                else:
+                    # Update the reaction if the type is different
+                    existing_reaction.reaction_type = reaction_type
+                    existing_reaction.save()
+                    action = "updated"
+            else:
+                # Add a new reaction if none exists
+                Reaction.objects.create(post=self, user=user, reaction_type=reaction_type)
+                action = "added"
 
-        # Build the full response object
+        # Build the response object with post data
         return {
             "id": self.id,
             "custom_user_id": self.user.id,
@@ -78,7 +95,7 @@ class Post(models.Model):
             "like_counter": self.like_count(),
             "comment_counter": self.comment_count(),
             "liked": self.likes.filter(user=user).exists(),
-            "user_reaction": reaction_type,
+            "user_reaction": reaction_type,  # Will be None if reaction was removed
             "total_reaction_count": self.post_reactions.count(),
             "reactions_list": [
                 {"user": reaction.user.username, "reaction_type": reaction.reaction_type}
@@ -97,6 +114,7 @@ class Post(models.Model):
                 .annotate(count=Count("reaction_type"))
                 .order_by("-count")[:3]
             ],
+            "action": action,  # Add, update, remove, or no_change
         }
 
 
