@@ -1,6 +1,6 @@
 # trend-backend
-1- docker compose -f docker-compose.prod.yml up = Python3 manage.py runserver
 
+docker compose -f docker-compose.prod.yml run --rm web python manage.py makemigrations 
 
 
 2- docker compose -f docker-compose.prod.yml run --rm web python "comand here" for example makemigrations or migrate ect...

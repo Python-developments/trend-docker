@@ -14,7 +14,8 @@ from .serializers import (CreateCommentSerializer,
                           CommentSerializer,
                           LikeToggleSerializer,
                           HiddenPostSerializer,
-                          ReactionSerializer)
+                          ReactionSerializer,
+                          PostReactionToggleSerializer)
 from rest_framework.permissions import IsAuthenticated
 from authentication.models import Block, CustomUser
 
@@ -82,25 +83,35 @@ class PostList(generics.ListAPIView):
         return queryset.order_by('-created_at')
 
 
-class PostDetail(generics.RetrieveUpdateDestroyAPIView):
-    '''
-    Retrieve, update, or delete a specific post.
-    - Any user can retrieve the post.
-    - Only authenticated users can update or delete a post.
-    '''
+class PostDetail(generics.RetrieveAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
 
+    def get_serializer_context(self):
+        """
+        Pass additional context like the request to the serializer.
+        """
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
+
     def perform_update(self, serializer):
+        """
+        Save the post with the authenticated user as the owner.
+        """
         serializer.save(user=self.request.user)
 
     def perform_destroy(self, instance):
-        # Optionally, ensure that only the post owner can delete it
+        """
+        Ensure only the post owner can delete the post.
+        """
         if instance.user == self.request.user:
             instance.delete()
         else:
             raise PermissionDenied("You do not have permission to delete this post.")
+
 
 
 
@@ -225,25 +236,25 @@ class HideOrUnhidePostView(APIView):
             return Response({"detail": "Post is not hidden."}, status=status.HTTP_400_BAD_REQUEST)
 
 class ReactionToggleView(generics.CreateAPIView):
-    serializer_class = ReactionSerializer
+    serializer_class = PostReactionToggleSerializer
     permission_classes = [IsAuthenticated]
 
-    def create(self, request, *args, **kwargs):
-        post_id = self.kwargs.get('pk')
-        try:
-            post = Post.objects.get(pk=post_id)
-        except Post.DoesNotExist:
-            return Response({'detail': 'Post not found.'}, status=status.HTTP_404_NOT_FOUND)
+    def get_serializer_context(self):
+        """
+        Pass additional context to the serializer, including the post instance.
+        """
+        context = super().get_serializer_context()
+        post_id = self.kwargs.get('pk')  # Get the post ID from the URL
+        post = get_object_or_404(Post, pk=post_id)  # Retrieve the post instance
+        context['post'] = post  # Add the post instance to the context
+        return context
 
+    def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        try:
-            serializer.is_valid(raise_exception=True)
-            reaction = serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except serializers.ValidationError as e:
-            if str(e) == "Reaction removed.":
-                return Response({'detail': 'Reaction removed.'}, status=status.HTTP_204_NO_CONTENT)
-            return Response(e.detail, status=status.HTTP_400_BAD_REQUEST)
+        serializer.is_valid(raise_exception=True)
+        result = serializer.save()
+        return Response(result, status=status.HTTP_201_CREATED)
+
 
 
 class ReactionListView(generics.ListAPIView):

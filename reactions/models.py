@@ -15,8 +15,9 @@ class Reaction(models.Model):
 
     post = models.ForeignKey('post.Post', on_delete=models.CASCADE, related_name='post_reactions')
     user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='user_reactions')
-    reaction_type = models.CharField(max_length=20, choices=REACTION_CHOICES)
+    reaction_type = models.CharField(max_length=10, choices=REACTION_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
+
 
     class Meta:
         constraints = [

@@ -30,26 +30,75 @@ class Post(models.Model):
         """
         return self.comments.count()
 
-    def toggle_reaction(self, user, reaction_type):
+    # def toggle_reaction(self, user, reaction_type):
+    #     """
+    #     Toggles a reaction for this post by the given user.
+    #     If the reaction of the same type exists, it removes it.
+    #     If a different reaction exists, it updates it.
+    #     Otherwise, it adds the reaction.
+    #     """
+    #     existing_reaction = Reaction.objects.filter(post=self, user=user).first()
+
+    #     if existing_reaction:
+    #         if existing_reaction.reaction_type == reaction_type:
+    #             existing_reaction.delete()  # Remove the reaction (toggle off)
+    #             return {"action": "removed", "reaction_type": reaction_type}
+    #         else:
+    #             existing_reaction.reaction_type = reaction_type
+    #             existing_reaction.save()  # Update the reaction type
+    #             return {"action": "updated", "reaction_type": reaction_type}
+    #     else:
+    #         Reaction.objects.create(post=self, user=user, reaction_type=reaction_type)  # Add new reaction
+    #         return {"action": "added", "reaction_type": reaction_type}
+    def add_or_update_reaction(self, user, reaction_type):
         """
-        Toggles a reaction for this post by the given user.
-        If the reaction of the same type exists, it removes it.
-        If a different reaction exists, it updates it.
-        Otherwise, it adds the reaction.
+        Adds or updates a reaction for this post by the given user and returns the full object.
         """
         existing_reaction = Reaction.objects.filter(post=self, user=user).first()
 
         if existing_reaction:
-            if existing_reaction.reaction_type == reaction_type:
-                existing_reaction.delete()  # Remove the reaction (toggle off)
-                return {"action": "removed", "reaction_type": reaction_type}
-            else:
-                existing_reaction.reaction_type = reaction_type
-                existing_reaction.save()  # Update the reaction type
-                return {"action": "updated", "reaction_type": reaction_type}
+            existing_reaction.reaction_type = reaction_type
+            existing_reaction.save()
+            action = "updated"
         else:
-            Reaction.objects.create(post=self, user=user, reaction_type=reaction_type)  # Add new reaction
-            return {"action": "added", "reaction_type": reaction_type}
+            Reaction.objects.create(post=self, user=user, reaction_type=reaction_type)
+            action = "added"
+
+        # Build the full response object
+        return {
+            "id": self.id,
+            "custom_user_id": self.user.id,
+            "profile_id": self.profile.id if self.profile else None,
+            "username": self.user.username,
+            "avatar": self.user.avatar.url if self.user.avatar else None,
+            "image": self.image.url if self.image else None,
+            "content": self.content,
+            "created_at": self.created_at,
+            "updated_at": self.updated_at,
+            "like_counter": self.like_count(),
+            "comment_counter": self.comment_count(),
+            "liked": self.likes.filter(user=user).exists(),
+            "user_reaction": reaction_type,
+            "total_reaction_count": self.post_reactions.count(),
+            "reactions_list": [
+                {"user": reaction.user.username, "reaction_type": reaction.reaction_type}
+                for reaction in self.post_reactions.select_related("user").all()
+            ],
+            "reaction_list_count": list(
+                self.post_reactions.values("reaction_type").annotate(count=Count("reaction_type")).order_by("-count")
+            ),
+            "top_3_reactions": [
+                {
+                    "reaction_type": reaction["reaction_type"],
+                    "count": reaction["count"],
+                    "user": self.post_reactions.filter(reaction_type=reaction["reaction_type"]).first().user.username,
+                }
+                for reaction in self.post_reactions.values("reaction_type")
+                .annotate(count=Count("reaction_type"))
+                .order_by("-count")[:3]
+            ],
+        }
+
 
     def get_top_reactions(self, top_n=3):
         """
@@ -80,23 +129,29 @@ class Post(models.Model):
         return top_reactions
 
 
-
-
-
     def reaction_list(self):
         """
         Retrieves a list of users and their reactions to the post.
         """
         reaction_icons = dict(Reaction.REACTION_CHOICES)
-        reactions = self.post_reactions.select_related('user').values('user__username', 'reaction_type')
+
+        # Ensure `post_id` is included in the query
+        reactions = self.post_reactions.select_related('user').values(
+            'user__username', 'reaction_type', 'post', 'post__content'
+        )
 
         return [
             {
                 "user": reaction['user__username'],
-                "reaction_type": reaction_icons.get(reaction['reaction_type'], reaction['reaction_type'])
+                "reaction_type": reaction_icons.get(reaction['reaction_type'], reaction['reaction_type']),
+                "post": {
+                    "id": reaction['post'],  # Use `post` instead of `post_id`
+                    "content": reaction['post__content'],
+                }
             }
             for reaction in reactions
         ]
+
 
     def reaction_list_count(self):
         """

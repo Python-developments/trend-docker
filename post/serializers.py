@@ -1,8 +1,8 @@
 from rest_framework import serializers
-# from authentication.models import CustomUser
 from .models import Post, Comment, HiddenPost
+from django.db.models import Count
 from reactions.models import Reaction
-# from profile_app.serializers import ProfileSerializer
+
 
 class CommentSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
@@ -36,6 +36,30 @@ class PostReactionToggleSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         """
+        Add or update a reaction for a post.
+        """
+        user = validated_data['user']
+        post = validated_data['post']
+        reaction_type = validated_data['reaction_type']
+
+        # Call the `add_or_update_reaction` method in the Post model
+        result = post.add_or_update_reaction(user=user, reaction_type=reaction_type)
+
+        # Add additional fields to the result
+        result['post_id'] = post.id
+        result['user_name'] = user.username
+
+        return result
+
+    def to_representation(self, instance):
+        """
+        Customize the response format.
+        """
+        return instance
+
+
+    def create(self, validated_data):
+        """
         Toggle the reaction for a post.
         """
         user = validated_data['user']
@@ -43,29 +67,34 @@ class PostReactionToggleSerializer(serializers.Serializer):
         reaction_type = validated_data['reaction_type']
 
         # Call the toggle_reaction method from the Post model
-        result = post.toggle_reaction(user=user, reaction_type=reaction_type)
+        result = post.add_or_update_reaction(user=user, reaction_type=reaction_type)
 
         return result  # Returns {'action': 'added/removed', 'reaction_type': 'type'}
 
 
 class PostSerializer(serializers.ModelSerializer):
     custom_user_id = serializers.ReadOnlyField(source='user.id')
+
     username = serializers.CharField(source='user.username', read_only=True)
     profile_id = serializers.ReadOnlyField(source='user.profile.id')
     avatar = serializers.ImageField(source='user.avatar', read_only=True)
     like_counter = serializers.SerializerMethodField()
     comment_counter = serializers.SerializerMethodField()
     liked = serializers.SerializerMethodField()
+    user_reaction = serializers.SerializerMethodField()  # Add this field
+    total_reaction_count = serializers.SerializerMethodField()
     reactions_list = serializers.SerializerMethodField()
     reaction_list_count = serializers.SerializerMethodField()
-    total_reaction_count = serializers.SerializerMethodField()
     top_3_reactions = serializers.SerializerMethodField()
-    
 
     class Meta:
         model = Post
-        fields = ('id', 'custom_user_id', 'profile_id', 'username', 'avatar', 'image', 'content', 'created_at', 'updated_at', 
-                  'like_counter', 'comment_counter', 'liked', 'total_reaction_count','reactions_list', 'reaction_list_count', 'top_3_reactions')
+        fields = (
+            'id', 'custom_user_id', 'profile_id', 'username', 'avatar', 'image', 'content',
+            'created_at', 'updated_at', 'like_counter', 'comment_counter', 'liked',
+            'user_reaction', 'total_reaction_count', 'reactions_list',
+            'reaction_list_count', 'top_3_reactions'
+        )
 
     def get_like_counter(self, obj):
         return obj.like_count()
@@ -79,22 +108,59 @@ class PostSerializer(serializers.ModelSerializer):
             return obj.likes.filter(user=request.user).exists()
         return False
 
+    def get_user_reaction(self, obj):
+        """
+        Retrieve the reaction type of the logged-in user for this post.
+        """
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            reaction = obj.post_reactions.filter(user=request.user).first()
+            return reaction.reaction_type if reaction else None
+        return None
+
+    def get_total_reaction_count(self, obj):
+        return obj.post_reactions.count()
+
     def get_reactions_list(self, obj):
-        return obj.reaction_list()
+        """
+        List all reactions with the user and reaction type.
+        """
+        return [
+            {
+                "user": reaction.user.username,
+                "reaction_type": reaction.reaction_type
+            }
+            for reaction in obj.post_reactions.select_related('user').all()
+        ]
 
     def get_reaction_list_count(self, obj):
-        return obj.reaction_list_count()
-    
-    def get_total_reaction_count(self, obj):
-        return obj.total_reaction_count() 
-    
+        """
+        Count each type of reaction for the post.
+        """
+        return obj.post_reactions.values('reaction_type').annotate(
+            count=Count('reaction_type')
+        ).order_by('-count')
+
     def get_top_3_reactions(self, obj):
-        
-        return obj.get_top_reactions()
+        """
+        Retrieve the top 3 reactions for the post.
+        """
+        top_reactions = obj.post_reactions.values('reaction_type').annotate(
+            count=Count('reaction_type')
+        ).order_by('-count')[:3]
+
+        result = []
+        for reaction in top_reactions:
+            user = obj.post_reactions.filter(reaction_type=reaction['reaction_type']).first().user.username
+            result.append({
+                "reaction_type": reaction['reaction_type'],
+                "count": reaction['count'],
+                "user": user
+            })
+        return result
+
 
     
-
-
 class LikeToggleSerializer(serializers.Serializer):
     post_id = serializers.PrimaryKeyRelatedField(queryset=Post.objects.all())
 
@@ -132,20 +198,22 @@ class ReactionSerializer(serializers.ModelSerializer):
         }
 
     def validate(self, data):
+        """
+        Ensure that the request has a valid user and post.
+        """
         request = self.context.get('request')
-        post_id = self.context.get('view').kwargs.get('pk')
-        user = request.user
+        post = self.context.get('post')  # Ensure post is passed explicitly into the serializer context
 
-        if not user.is_authenticated:
-            raise serializers.ValidationError("Authentication required.")
+        if not request or not request.user.is_authenticated:
+            raise serializers.ValidationError("Authentication is required.")
 
-        post = Post.objects.filter(pk=post_id).first()
         if not post:
-            raise serializers.ValidationError("Post not found.")
+            raise serializers.ValidationError("Post instance is required.")
 
+        data['user'] = request.user
         data['post'] = post
-        data['user'] = user
         return data
+
 
     def create(self, validated_data):
         """
@@ -156,7 +224,7 @@ class ReactionSerializer(serializers.ModelSerializer):
         reaction_type = validated_data['reaction_type']
 
         # Use the Post model's toggle_reaction method
-        result = post.toggle_reaction(user=user, reaction_type=reaction_type)
+        result = post.add_or_update_reaction(user=user, reaction_type=reaction_type)
 
         # Return a response-like structure for clarity
         if result['action'] == "added":
