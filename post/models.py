@@ -7,9 +7,8 @@ from reactions.models import Reaction
 
 
 class Post(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='posts')
-
-    profile = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name='posts', null=True)
+    user = models.ForeignKey('authentication.CustomUser', on_delete=models.CASCADE, related_name='posts')
+    profile = models.ForeignKey('profile_app.Profile', on_delete=models.CASCADE, related_name='posts', null=True)
     image = models.ImageField(upload_to='images/', blank=False, null=False)
     content = models.CharField(max_length=1000, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -18,104 +17,83 @@ class Post(models.Model):
     def __str__(self) -> str:
         return f"{self.content[:20]}" if self.content else "No Content"
 
-    def like_count(self):
-        """
-        Returns the total number of likes on the post.
-        """
-        return self.likes.count()
-
-    def comment_count(self):
-        """
-        Returns the total number of comments on the post.
-        """
-        return self.comments.count()
-
-    # def toggle_reaction(self, user, reaction_type):
-    #     """
-    #     Toggles a reaction for this post by the given user.
-    #     If the reaction of the same type exists, it removes it.
-    #     If a different reaction exists, it updates it.
-    #     Otherwise, it adds the reaction.
-    #     """
-    #     existing_reaction = Reaction.objects.filter(post=self, user=user).first()
-
-    #     if existing_reaction:
-    #         if existing_reaction.reaction_type == reaction_type:
-    #             existing_reaction.delete()  # Remove the reaction (toggle off)
-    #             return {"action": "removed", "reaction_type": reaction_type}
-    #         else:
-    #             existing_reaction.reaction_type = reaction_type
-    #             existing_reaction.save()  # Update the reaction type
-    #             return {"action": "updated", "reaction_type": reaction_type}
-    #     else:
-    #         Reaction.objects.create(post=self, user=user, reaction_type=reaction_type)  # Add new reaction
-    #         return {"action": "added", "reaction_type": reaction_type}
     def add_or_update_reaction(self, user, reaction_type):
         """
         Add, update, or remove a reaction for this post based on user input.
-        If 'reaction_type' is 'cancel', it explicitly removes the reaction.
         """
+        # Debugging: Log the inputs
+        print(f"add_or_update_reaction called with reaction_type={reaction_type}, user={user.username}")
+
         # Check if the user already reacted to this post
         existing_reaction = Reaction.objects.filter(post=self, user=user).first()
 
-        if reaction_type == "cancel":
-            # If the reaction_type is "cancel", remove the existing reaction
-            if existing_reaction:
+        # Debugging: Log existing reaction
+        print(f"Existing reaction: {existing_reaction}")
+
+        if existing_reaction:
+            if existing_reaction.reaction_type == reaction_type:
+                # If the user clicks the same reaction twice, remove it
                 existing_reaction.delete()
                 action = "removed"
+                reaction_type = None  # No active reaction after removal
             else:
-                action = "none"  # No action taken because no reaction exists
-            reaction_type = None  # No active reaction after removal
+                # Update the reaction if the type is different
+                existing_reaction.reaction_type = reaction_type
+                existing_reaction.save()
+                action = "updated"
         else:
-            if existing_reaction:
-                if existing_reaction.reaction_type == reaction_type:
-                    # If the same reaction is clicked, return the current state (no-op)
-                    action = "no_change"
-                else:
-                    # Update the reaction if the type is different
-                    existing_reaction.reaction_type = reaction_type
-                    existing_reaction.save()
-                    action = "updated"
-            else:
-                # Add a new reaction if none exists
-                Reaction.objects.create(post=self, user=user, reaction_type=reaction_type)
-                action = "added"
+            # Add a new reaction if none exists
+            Reaction.objects.create(post=self, user=user, reaction_type=reaction_type)
+            action = "added"
 
-        # Build the response object with post data
+
+        # Debugging: Log the result of the operation
+        print(f"Action taken: {action}")
+
+        # Build the response object
         return {
             "id": self.id,
-            "custom_user_id": self.user.id,
-            "profile_id": self.profile.id if self.profile else None,
-            "username": self.user.username,
-            "avatar": self.user.avatar.url if self.user.avatar else None,
-            "image": self.image.url if self.image else None,
-            "content": self.content,
-            "created_at": self.created_at,
-            "updated_at": self.updated_at,
-            "like_counter": self.like_count(),
-            "comment_counter": self.comment_count(),
-            "liked": self.likes.filter(user=user).exists(),
-            "user_reaction": reaction_type,  # Will be None if reaction was removed
+            "action": action,
+            "user_reaction": reaction_type,
             "total_reaction_count": self.post_reactions.count(),
-            "reactions_list": [
-                {"user": reaction.user.username, "reaction_type": reaction.reaction_type}
-                for reaction in self.post_reactions.select_related("user").all()
-            ],
-            "reaction_list_count": list(
-                self.post_reactions.values("reaction_type").annotate(count=Count("reaction_type")).order_by("-count")
-            ),
-            "top_3_reactions": [
-                {
-                    "reaction_type": reaction["reaction_type"],
-                    "count": reaction["count"],
-                    "user": self.post_reactions.filter(reaction_type=reaction["reaction_type"]).first().user.username,
-                }
-                for reaction in self.post_reactions.values("reaction_type")
-                .annotate(count=Count("reaction_type"))
-                .order_by("-count")[:3]
-            ],
-            "action": action,  # Add, update, remove, or no_change
         }
+
+        # # Build the response object with post data
+        # return {
+        #     "id": self.id,
+        #     "custom_user_id": self.user.id,
+        #     "profile_id": self.profile.id if self.profile else None,
+        #     "username": self.user.username,
+        #     "avatar": self.user.avatar.url if self.user.avatar else None,
+        #     "image": self.image.url if self.image else None,
+        #     "content": self.content,
+        #     "created_at": self.created_at,
+        #     "updated_at": self.updated_at,
+        #     "like_counter": self.like_count(),
+        #     "comment_counter": self.comment_count(),
+        #     "liked": self.likes.filter(user=user).exists(),
+        #     "user_reaction": reaction_type,  # Will be None if reaction was removed
+        #     "total_reaction_count": self.post_reactions.count(),
+        #     "reactions_list": [
+        #         {"user": reaction.user.username, "reaction_type": reaction.reaction_type}
+        #         for reaction in self.post_reactions.select_related("user").all()
+        #     ],
+        #     "reaction_list_count": list(
+        #         self.post_reactions.values("reaction_type").annotate(count=Count("reaction_type")).order_by("-count")
+        #     ),
+        #     "top_3_reactions": [
+        #         {
+        #             "reaction_type": reaction["reaction_type"],
+        #             "count": reaction["count"],
+        #             "user": self.post_reactions.filter(reaction_type=reaction["reaction_type"]).first().user.username,
+        #         }
+        #         for reaction in self.post_reactions.values("reaction_type")
+        #         .annotate(count=Count("reaction_type"))
+        #         .order_by("-count")[:3]
+        #     ],
+        #     "action": action,  # Add, update, remove, or no_change
+        # }
+
 
 
     def get_top_reactions(self, top_n=3):

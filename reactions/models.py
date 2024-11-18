@@ -18,7 +18,6 @@ class Reaction(models.Model):
     reaction_type = models.CharField(max_length=10, choices=REACTION_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
 
-
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=['post', 'user'], name='unique_reaction_per_user_per_post')

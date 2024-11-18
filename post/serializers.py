@@ -15,7 +15,9 @@ class CommentSerializer(serializers.ModelSerializer):
         fields = ('id', 'custom_user_id', 'profile_id', 'username', 'avatar', 'content', 'created_at', 'updated_at')
 
 class PostReactionToggleSerializer(serializers.Serializer):
-    reaction_type = serializers.ChoiceField(choices=Reaction.REACTION_CHOICES)
+    reaction_type = serializers.ChoiceField(
+        choices=Reaction.REACTION_CHOICES + [("remove", "Remove")]  # Add "remove" dynamically
+    )
 
     def validate(self, data):
         """
@@ -23,6 +25,9 @@ class PostReactionToggleSerializer(serializers.Serializer):
         """
         request = self.context.get('request')
         post = self.context.get('post')
+
+        # Debugging: Log the chosen reaction type
+        print(f"User chose reaction: {data['reaction_type']}")
 
         if not request.user.is_authenticated:
             raise serializers.ValidationError("Authentication is required.")
@@ -36,52 +41,30 @@ class PostReactionToggleSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         """
-        Add or update a reaction for a post.
+        Add, update, or remove a reaction for a post.
         """
         user = validated_data['user']
         post = validated_data['post']
         reaction_type = validated_data['reaction_type']
 
-        # Call the `add_or_update_reaction` method in the Post model
+        # Debugging: Log the processing reaction type
+        print(f"Processing reaction_type={reaction_type} for user={user.username}")
+
         result = post.add_or_update_reaction(user=user, reaction_type=reaction_type)
 
-        # Add additional fields to the result
-        result['post_id'] = post.id
-        result['user_name'] = user.username
-
+        # Debugging: Log the result from the Post model
+        print(f"Result from add_or_update_reaction: {result}")
         return result
-
-    def to_representation(self, instance):
-        """
-        Customize the response format.
-        """
-        return instance
-
-
-    def create(self, validated_data):
-        """
-        Toggle the reaction for a post.
-        """
-        user = validated_data['user']
-        post = validated_data['post']
-        reaction_type = validated_data['reaction_type']
-
-        # Call the toggle_reaction method from the Post model
-        result = post.add_or_update_reaction(user=user, reaction_type=reaction_type)
-
-        return result  # Returns {'action': 'added/removed', 'reaction_type': 'type'}
-
 
 class PostSerializer(serializers.ModelSerializer):
     custom_user_id = serializers.ReadOnlyField(source='user.id')
-
     username = serializers.CharField(source='user.username', read_only=True)
     profile_id = serializers.ReadOnlyField(source='user.profile.id')
     avatar = serializers.ImageField(source='user.avatar', read_only=True)
     like_counter = serializers.SerializerMethodField()
     comment_counter = serializers.SerializerMethodField()
     liked = serializers.SerializerMethodField()
-    user_reaction = serializers.SerializerMethodField()  # Add this field
+    user_reaction = serializers.SerializerMethodField()
     total_reaction_count = serializers.SerializerMethodField()
     reactions_list = serializers.SerializerMethodField()
     reaction_list_count = serializers.SerializerMethodField()
@@ -160,7 +143,6 @@ class PostSerializer(serializers.ModelSerializer):
         return result
 
 
-    
 class LikeToggleSerializer(serializers.Serializer):
     post_id = serializers.PrimaryKeyRelatedField(queryset=Post.objects.all())
 
@@ -182,11 +164,11 @@ class CreateCommentSerializer(serializers.ModelSerializer):
         fields = ('post', 'content')
 
 
-
 class HiddenPostSerializer(serializers.ModelSerializer):
     class Meta:
         model = HiddenPost
         fields = ['user', 'post']
+
 
 class ReactionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -202,7 +184,7 @@ class ReactionSerializer(serializers.ModelSerializer):
         Ensure that the request has a valid user and post.
         """
         request = self.context.get('request')
-        post = self.context.get('post')  # Ensure post is passed explicitly into the serializer context
+        post = self.context.get('post')
 
         if not request or not request.user.is_authenticated:
             raise serializers.ValidationError("Authentication is required.")
@@ -214,22 +196,14 @@ class ReactionSerializer(serializers.ModelSerializer):
         data['post'] = post
         return data
 
-
     def create(self, validated_data):
         """
-        Toggle the reaction for a post using the Post model's `toggle_reaction` method.
+        Toggle the reaction for a post using the Post model's `add_or_update_reaction` method.
         """
         post = validated_data.pop('post')
         user = validated_data.pop('user')
         reaction_type = validated_data['reaction_type']
 
-        # Use the Post model's toggle_reaction method
+        # Call the method on the Post model
         result = post.add_or_update_reaction(user=user, reaction_type=reaction_type)
-
-        # Return a response-like structure for clarity
-        if result['action'] == "added":
-            return Reaction.objects.filter(post=post, user=user, reaction_type=reaction_type).first()
-        elif result['action'] == "removed":
-            raise serializers.ValidationError("Reaction removed.")
-        else:
-            return Reaction.objects.filter(post=post, user=user, reaction_type=reaction_type).first()
+        return result

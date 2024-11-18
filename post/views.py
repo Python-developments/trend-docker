@@ -235,7 +235,17 @@ class HideOrUnhidePostView(APIView):
         except HiddenPost.DoesNotExist:
             return Response({"detail": "Post is not hidden."}, status=status.HTTP_400_BAD_REQUEST)
 
+from django.shortcuts import get_object_or_404
+from rest_framework import generics, status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from .models import Post
+from .serializers import PostReactionToggleSerializer
+
 class ReactionToggleView(generics.CreateAPIView):
+    """
+    View to toggle reactions on a post (add, update, or remove).
+    """
     serializer_class = PostReactionToggleSerializer
     permission_classes = [IsAuthenticated]
 
@@ -250,11 +260,22 @@ class ReactionToggleView(generics.CreateAPIView):
         return context
 
     def create(self, request, *args, **kwargs):
+        """
+        Handle the POST request to toggle reactions.
+        """
+        # Debugging: Log the raw request data
+        print(f"Reaction received in request: {request.data.get('reaction_type')}")
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        result = serializer.save()
-        return Response(result, status=status.HTTP_201_CREATED)
 
+        # Save the reaction (add, update, or remove)
+        result = serializer.save()
+
+        # Debugging: Log the result from the serializer
+        print(f"Final result: {result}")
+
+        return Response(result, status=status.HTTP_200_OK)
 
 
 class ReactionListView(generics.ListAPIView):
