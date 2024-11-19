@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Count
+from django.db.models import Count, Min
 from authentication.models import CustomUser
 from profile_app.models import Profile
 from reactions.models import Reaction
@@ -37,7 +37,6 @@ class Post(models.Model):
         existing_reaction = Reaction.objects.filter(post=self, user=user).first()
 
         if reaction_type == "remove":
-            # If the reaction_type is "remove", delete the existing reaction
             if existing_reaction:
                 existing_reaction.delete()
                 action = "removed"
@@ -82,16 +81,16 @@ class Post(models.Model):
             "reaction_list_count": list(
                 self.post_reactions.values("reaction_type").annotate(count=Count("reaction_type")).order_by("-count")
             ),
-            "top_3_reactions": [
-                {
-                    "reaction_type": reaction["reaction_type"],
-                    "count": reaction["count"],
-                    "user": self.post_reactions.filter(reaction_type=reaction["reaction_type"]).first().user.username,
-                }
-                for reaction in self.post_reactions.values("reaction_type")
-                .annotate(count=Count("reaction_type"))
-                .order_by("-count")[:3]
-            ],
+             "top_3_reactions": [
+                    {
+                        "reaction_type": reaction["reaction_type"],
+                        "count": reaction["count"],
+                        "created_at": reaction["earliest_reaction"],
+                    }
+                    for reaction in self.post_reactions.values("reaction_type")
+                    .annotate(count=Count("reaction_type"), earliest_reaction=Min("created_at"))
+                    .order_by("-count")[:3]
+                ],  # Top 3 reactions by count    
             "action": action,  # 'added', 'updated', 'removed', or 'no_change'
         }
 
