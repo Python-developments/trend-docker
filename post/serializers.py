@@ -126,21 +126,29 @@ class PostSerializer(serializers.ModelSerializer):
 
     def get_top_3_reactions(self, obj):
         """
-        Retrieve the top 3 reactions for the post.
+        Retrieve the top 3 reactions for the post, including the reaction type, count,
+        user, and the created_at timestamp of the most recent reaction of that type.
         """
+        # Aggregate and get top 3 reaction types based on count
         top_reactions = obj.post_reactions.values('reaction_type').annotate(
             count=Count('reaction_type')
         ).order_by('-count')[:3]
 
         result = []
         for reaction in top_reactions:
-            user = obj.post_reactions.filter(reaction_type=reaction['reaction_type']).first().user.username
+            # Fetch the latest reaction of the type to include `created_at` and `user`
+            latest_reaction = obj.post_reactions.filter(
+                reaction_type=reaction['reaction_type']
+            ).select_related('user').latest('created_at')
+            
             result.append({
                 "reaction_type": reaction['reaction_type'],
                 "count": reaction['count'],
-                "user": user
+                "user": latest_reaction.user.username,
+                "created_at": latest_reaction.created_at
             })
         return result
+
 
 
 class LikeToggleSerializer(serializers.Serializer):
