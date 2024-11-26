@@ -91,24 +91,30 @@ WSGI_APPLICATION = 'trend.wsgi.application'
 
 # Database configuration
 USE_POSTGRES_DB = env.bool("USE_POSTGRES_DB", default=False)
-if not USE_POSTGRES_DB:
-    DATABASES = {
+DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
-else:
-    DATABASES = {
-        "default": {
-            "ENGINE": env("SQL_ENGINE", default="django.db.backends.postgresql"),
-            "NAME": env("POSTGRES_DB", default="mydatabase"),
-            "USER": env("POSTGRES_USER", default="myuser"),
-            "PASSWORD": env("POSTGRES_PASSWORD", default="mypassword"),
-            "HOST": env("POSTGRES_HOST", default="localhost"),
-            "PORT": env("POSTGRES_PORT", default="5432"),
-        }
-    }
+# if not USE_POSTGRES_DB:
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.sqlite3',
+#             'NAME': BASE_DIR / 'db.sqlite3',
+#         }
+#     }
+# else:
+#     DATABASES = {
+#         "default": {
+#             "ENGINE": env("SQL_ENGINE", default="django.db.backends.postgresql"),
+#             "NAME": env("POSTGRES_DB", default="mydatabase"),
+#             "USER": env("POSTGRES_USER", default="myuser"),
+#             "PASSWORD": env("POSTGRES_PASSWORD", default="mypassword"),
+#             "HOST": env("POSTGRES_HOST", default="localhost"),
+#             "PORT": env("POSTGRES_PORT", default="5432"),
+#         }
+#     }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
@@ -205,3 +211,14 @@ print(f"Media URL: {MEDIA_URL}")
 # Maximum video file size in bytes (e.g., 200MB)
 MAX_VIDEO_SIZE = env.float("MAX_VIDEO_SIZE", default=200*1024*1024)  # Example: 200 MB in bytes
 MAX_VIDEO_DURATION = env.float("MAX_VIDEO_DURATION", default=30)  # Example: 30 seconds 
+
+
+
+
+
+EMAIL_USE_TLS = True
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_HOST_USER = 'mpandhp@gmail.com'
+EMAIL_HOST_PASSWORD = 'attl tvgh sjag kxgm'
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

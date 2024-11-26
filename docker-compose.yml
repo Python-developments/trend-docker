@@ -18,31 +18,24 @@ services:
     depends_on:
       postgres-db:
         condition: service_healthy
-    
+
   postgres-db:
-    container_name: trend-backend-postgres-db
+    container_name: trend-backend-postgres-db-new
     image: postgis/postgis:14-3.4
     volumes:
       - postgres-data:/var/lib/postgresql/data/
     env_file:
       - .env
     ports:
-    - "5432:5432"
+      - "5432:5432"
     restart: on-failure
     healthcheck:
-      test: [
-        "CMD",
-        "pg_isready",
-        "-h", "localhost",
-        "-p", "5432",
-        "-d", "$POSTGRES_DB",
-        "-U", "$POSTGRES_USER"
-      ]
+      test: [ "CMD", "pg_isready", "-h", "localhost", "-p", "5432", "-d", "$POSTGRES_DB", "-U", "$POSTGRES_USER" ]
       interval: 0.5s
       timeout: 5s
       retries: 20
       start_period: 10s
-  
+
   redis:
     container_name: trend-backend-redis
     image: redis:7.2.4-alpine
@@ -65,8 +58,7 @@ services:
         condition: service_started
       postgres-db:
         condition: service_healthy
-    
-    
+
   celery-beat:
     container_name: trend-backend-celery-beat
     build:
@@ -80,7 +72,6 @@ services:
       - web
       - redis
     restart: on-failure
-    
 
 volumes:
   postgres-data:
