@@ -128,15 +128,32 @@ class UnfollowUserView(generics.DestroyAPIView):
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, *args, **kwargs):
+        # Get the authenticated user (follower)
         follower = request.user
+        # Get the target user (following) using the primary key in the URL
         following = get_object_or_404(CustomUser, pk=self.kwargs.get('pk'))
 
+        # Check if the user is trying to unfollow themselves
+        if follower == following:
+            return Response(
+                {'error': 'You cannot unfollow yourself.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Check if a follow relationship exists
         follow = Follow.objects.filter(follower=follower, following=following)
         if not follow.exists():
-            return Response({'error': 'You are not following this user.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response(
+                {'error': 'You are not following this user.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
+        # Delete the follow relationship
         follow.first().delete()
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {'success': f'You have successfully unfollowed {following.username}.'},
+            status=status.HTTP_200_OK
+        )
 
 
 class FollowersListAPIView(generics.ListAPIView):

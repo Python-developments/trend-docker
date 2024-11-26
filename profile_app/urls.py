@@ -12,7 +12,7 @@ import profile_app.views as views
 
 urlpatterns = [
     # Profile endpoints
-    path('', ProfileViewList.as_view(), name='profile-list'),
+    path('/', ProfileViewList.as_view(), name='profile-list'),
     path('<int:pk>/', ProfileDetails.as_view(), name='profile-details'),
     path('update/', ProfileUpdateView.as_view(), name='profile-update'),
 
