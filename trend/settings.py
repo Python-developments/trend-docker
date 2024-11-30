@@ -101,30 +101,30 @@ WSGI_APPLICATION = 'trend.wsgi.application'
 
 # Database configuration
 USE_POSTGRES_DB = env.bool("USE_POSTGRES_DB", default=False)
-DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
-        }
-    }
-# if not USE_POSTGRES_DB:
-#     DATABASES = {
+# DATABASES = {
 #         'default': {
 #             'ENGINE': 'django.db.backends.sqlite3',
 #             'NAME': BASE_DIR / 'db.sqlite3',
 #         }
 #     }
-# else:
-#     DATABASES = {
-#         "default": {
-#             "ENGINE": env("SQL_ENGINE", default="django.db.backends.postgresql"),
-#             "NAME": env("POSTGRES_DB", default="mydatabase"),
-#             "USER": env("POSTGRES_USER", default="myuser"),
-#             "PASSWORD": env("POSTGRES_PASSWORD", default="mypassword"),
-#             "HOST": env("POSTGRES_HOST", default="localhost"),
-#             "PORT": env("POSTGRES_PORT", default="5432"),
-#         }
-#     }
+if not USE_POSTGRES_DB:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
+else:
+    DATABASES = {
+        "default": {
+            "ENGINE": env("SQL_ENGINE", default="django.db.backends.postgresql"),
+            "NAME": env("POSTGRES_DB", default="mydatabase"),
+            "USER": env("POSTGRES_USER", default="myuser"),
+            "PASSWORD": env("POSTGRES_PASSWORD", default="mypassword"),
+            "HOST": env("POSTGRES_HOST", default="localhost"),
+            "PORT": env("POSTGRES_PORT", default="5432"),
+        }
+    }
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [

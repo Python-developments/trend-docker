@@ -3,7 +3,6 @@ import requests
 from urllib.parse import urlencode, urljoin
 from oauthlib.common import UNICODE_ASCII_CHARACTER_SET
 
-from django.urls import reverse_lazy
 from django.shortcuts import get_object_or_404, redirect
 from django.conf import settings
 from django.urls import reverse
