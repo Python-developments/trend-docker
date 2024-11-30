@@ -6,8 +6,7 @@ from authentication.models import CustomUser
 class NotificationSerializer(serializers.ModelSerializer):
     sender_username = serializers.CharField(source="sender.username", read_only=True)
     sender_user_id = serializers.IntegerField(source="sender.id", read_only=True)
-    # Adjust the sender avatar field if necessary
-    sender_avatar = serializers.ImageField(source="sender.avatar", read_only=True)
+    sender_avatar = serializers.SerializerMethodField()
     reaction_type = serializers.CharField(source="reactions.reaction_type", read_only=True)
     follow_notification = serializers.SerializerMethodField()
     user_id = serializers.IntegerField(source="user.id", read_only=True)
@@ -20,19 +19,24 @@ class NotificationSerializer(serializers.ModelSerializer):
             'notification_type', 'created_at', 'is_read', 'reaction_type', 'follow_notification'
         ]
 
+    def get_sender_avatar(self, obj):
+        if obj.sender.avatar:
+            return obj.sender.avatar.url
+        return None
+
     def get_follow_notification(self, obj):
         return Notification.objects.filter(
             user=obj.user, sender=obj.sender, notification_type='follow'
         ).exists()
 
     def get_post_id(self, obj):
-        if obj.reactions:
+        try:
             return obj.reactions.post.id
-        return None
-
+        except AttributeError:
+            return None
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'avatar']  # Add other fields as needed
+        fields = ['id', 'username', 'avatar']
