@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path, include
 from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     MyTokenObtainPairSerializer, 
@@ -10,7 +10,12 @@ from .views import (
     UserRegisterView, 
     BlockCreateView, 
     BlockListView, 
-    UnblockUserView
+    UnblockUserView,
+    GoogleLoginRedirectApi,
+    GoogleLoginView,
+    GoogleLoginCallback,
+    FacebookLoginView
+
 )
 
 urlpatterns = [
@@ -32,4 +37,18 @@ urlpatterns = [
     path('blocks/', BlockListView.as_view(), name='block-list'),
     path('blocks/create/', BlockCreateView.as_view(), name='block-create'),
     path('blocks/unblock/<int:blocked_id>/', UnblockUserView.as_view(), name='unblock-user'),
+
+    # allauth with social auth endpoints
+    path("dj_rest_auth/", include("dj_rest_auth.urls")),
+    path("allauth/accounts/", include("allauth.urls")),
+    path("dj_rest_auth/registration/", include("dj_rest_auth.registration.urls")),
+    path("google/redirect/", GoogleLoginRedirectApi.as_view(), name="google_redirect"),
+    path("google/login/", GoogleLoginView.as_view(), name="google_login"),
+    path(
+        "google/callback/",
+        GoogleLoginCallback.as_view(),
+        name="google_callback",
+    ),
+    path("facebook-login/", FacebookLoginView.as_view(), name="facebook_login"),
+    
 ]

@@ -26,7 +26,7 @@ from .swagger import urlpatterns as swagger_urls
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api-auth/', include('rest_framework.urls')),
-    path('auth/', include('authentication.urls')),
+    path('api/v1/auth/', include('authentication.urls')),
     path('post/', include('post.urls')),
     path('profile/', include('profile_app.urls')),
     path('vlog/', include('vlog.urls')),

@@ -2,7 +2,6 @@ import os
 import socket
 from pathlib import Path
 from datetime import timedelta
-from django.core.exceptions import ImproperlyConfigured
 from environ import Env
 
 # Initialize environment variables
@@ -41,10 +40,18 @@ INSTALLED_APPS = [
     'whitenoise.runserver_nostatic',
     'corsheaders',
     'rest_framework',
+    'rest_framework.authtoken',
     'rest_framework_simplejwt.token_blacklist',
     'drf_yasg',
     'django_extensions',
     'django_celery_beat',
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'allauth.socialaccount.providers.facebook',
+    "dj_rest_auth",
+    'dj_rest_auth.registration',
     # Your apps
     'vlog',
     'post',
@@ -55,6 +62,8 @@ INSTALLED_APPS = [
     'reactions',
 ]
 
+# django.contrib.sites
+SITE_ID = 1
 AUTH_USER_MODEL = "authentication.CustomUser"
 
 MIDDLEWARE = [
@@ -67,6 +76,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
 ROOT_URLCONF = 'trend.urls'
@@ -169,6 +179,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
+        # 'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
     'PAGE_SIZE': 10,
@@ -183,6 +194,12 @@ SIMPLE_JWT = {
     "ALGORITHM": "HS256",
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True
@@ -213,8 +230,7 @@ MAX_VIDEO_SIZE = env.float("MAX_VIDEO_SIZE", default=200*1024*1024)  # Example: 
 MAX_VIDEO_DURATION = env.float("MAX_VIDEO_DURATION", default=30)  # Example: 30 seconds 
 
 
-
-
+BASE_BACKEND_URL = env("BASE_BACKEND_URL", default="http://localhost:8000")
 
 EMAIL_USE_TLS = True
 EMAIL_HOST = 'smtp.gmail.com'
@@ -222,3 +238,36 @@ EMAIL_PORT = 587
 EMAIL_HOST_USER = 'mpandhp@gmail.com'
 EMAIL_HOST_PASSWORD = 'attl tvgh sjag kxgm'
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+
+
+ACCOUNT_AUTHENTICATION_METHOD = "email"  # Use Email / Password authentication
+ACCOUNT_USERNAME_REQUIRED = True
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_EMAIL_VERIFICATION = "none" # Do not require email confirmation
+
+# Google OAuth
+GOOGLE_OAUTH_CLIENT_ID = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
+GOOGLE_OAUTH_CLIENT_SECRET = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET")
+GOOGLE_OAUTH_CALLBACK_URL = os.getenv("GOOGLE_OAUTH_CALLBACK_URL")
+GOOGLE_AUTH_URL = os.getenv("GOOGLE_AUTH_URL", "https://accounts.google.com/o/oauth2/auth")
+
+# django-allauth (social)
+# Authenticate if local account with this email address already exists
+SOCIALACCOUNT_EMAIL_AUTHENTICATION = True
+# Connect local account and social account if local account with that email address already exists
+SOCIALACCOUNT_EMAIL_AUTHENTICATION_AUTO_CONNECT = True
+SOCIALACCOUNT_PROVIDERS = {
+    "google": {
+        "APPS": [
+            {
+                "client_id": GOOGLE_OAUTH_CLIENT_ID,
+                "secret": GOOGLE_OAUTH_CLIENT_SECRET,
+                "key": "",
+            },
+        ],
+        "SCOPE": ["profile", "email"],
+        "AUTH_PARAMS": {
+            "access_type": "online",
+        },
+    }
+}
