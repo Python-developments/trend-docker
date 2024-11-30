@@ -17,6 +17,9 @@ class CustomUser(AbstractBaseUser, PermissionsMixin):
     and block_count, along with an OTP mechanism for password reset.
     """
     username = models.CharField(max_length=35, unique=True)
+    first_name = models.CharField(max_length=35, blank=True, null=True)
+    last_name = models.CharField(max_length=35, blank=True, null=True)
+    bio = models.TextField(max_length=80, blank=True, null=True)
     phone_number = models.CharField(max_length=13, unique=True, null=True, blank=True)
     email = models.EmailField(unique=True)
     is_staff = models.BooleanField(default=False)

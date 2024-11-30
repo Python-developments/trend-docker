@@ -20,7 +20,7 @@ class CustomUserRegistrationSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = CustomUser
-        fields = ['id', 'username', 'email', 'avatar', 'password', 'password2']
+        fields = ['id', 'username','first_name','last_name', 'email', 'avatar', 'password', 'password2']
         extra_kwargs = {
             'password': {'write_only': True},
             'password2': {'write_only': True},
@@ -89,6 +89,8 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
         # Adds additional user-related information to the token response :
         data['user'] = str(user)
         data['id'] = user.id
+        data['email'] = user.email
+        
         if user.avatar:
             avatar_url = request.build_absolute_uri(user.avatar.url)
         else:

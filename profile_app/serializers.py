@@ -23,6 +23,8 @@ class ProfileSerializer(serializers.ModelSerializer):
     following_count = serializers.SerializerMethodField()
     vlogs_count = serializers.SerializerMethodField()
     username = serializers.CharField(source='user.username', read_only=True)
+    first_name = serializers.CharField(source='user.first_name', read_only=True)
+    last_name = serializers.CharField(source='user.last_name', read_only=True)
     avatar = serializers.ImageField(max_length=None, use_url=True, allow_null=True, required=False)
     total_reactions = serializers.SerializerMethodField()
 
@@ -68,7 +70,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = (
-            'id', 'username', 'bio', 'avatar', 'background_pic', 'created_at', 'updated_at',
+            'id', 'username','first_name','last_name', 'bio', 'avatar', 'background_pic', 'created_at', 'updated_at',
             'posts_count', 'following_count', 'followers_count', 'is_following',
             'user_posts', 'user_videos', 'hide_avatar', 'vlogs_count', 'total_reactions'
         )
