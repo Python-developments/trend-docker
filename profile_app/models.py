@@ -11,7 +11,6 @@ class Profile(models.Model):
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='profile', null=True)
     bio = models.TextField(blank=True, null=True)
     avatar = models.ImageField(upload_to='profile_pics', blank=True, null=True)
-    background_pic = models.ImageField(upload_to='background_pics', blank=True, null=True)
     hide_avatar = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -25,7 +24,7 @@ class Profile(models.Model):
         return self.user.username
 
     def post_count(self):
-        return self.user.posts.count()  # Assuming `related_name='posts'` in Post model
+        return self.user.posts.count()
 
     def follow_count(self):
         return self.user.following.count()
@@ -34,7 +33,6 @@ class Profile(models.Model):
         return self.user.followers.count()
 
     def total_reactions(self):
-        # Aggregate total reactions across all posts by this user
         return Reaction.objects.filter(post__user=self.user).count()
 
 
@@ -51,7 +49,6 @@ class Follow(models.Model):
         return f'{self.follower.username} follows {self.following.username}'
 
     def clean(self):
-        # Validate the uniqueness constraint if called explicitly
         if Follow.objects.filter(following=self.following, follower=self.follower).exists():
             raise ValidationError('You are already following this user.')
 

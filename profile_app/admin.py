@@ -3,7 +3,7 @@ from .models import Profile, Follow
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
-    list_display = ['id','user', 'bio', 'avatar', 'background_pic', 'created_at', 'updated_at']
+    list_display = ['id','user', 'bio', 'avatar', 'created_at', 'updated_at']
     search_fields = ['user__username', 'user__email', 'user__first_name', 'user__last_name', 'bio', ]
     list_filter = ['created_at', 'updated_at']
     list_display_links = ['user']
