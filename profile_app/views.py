@@ -1,48 +1,34 @@
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404, redirect, render
 from django.core.exceptions import PermissionDenied
 from django.db.models import Exists, OuterRef
-from django.views.decorators.csrf import csrf_exempt
-
 from .models import Profile, Follow
-from .serializers import ProfileSerializer, FollowSerializer, ProfileUpdateSerializer
+from .serializers import ProfileSerializer, FollowSerializer
 from authentication.models import Block, CustomUser
 from authentication.pagination import CustomPageNumberPagination
 
-# --------------------------------------
-# Helper Functions
-# --------------------------------------
-
-def get_filtered_user_profiles(user_ids, request_user):
-    """
-    Helper function to filter user profiles based on mutual blocked relationships.
-    """
-    blocked_users = Block.objects.filter(blocker=request_user).values_list('blocked', flat=True)
-    blocked_by_users = Block.objects.filter(blocked=request_user).values_list('blocker', flat=True)
-    all_blocked_users = set(blocked_users).union(set(blocked_by_users))
-    filtered_user_ids = [user_id for user_id in user_ids if user_id not in all_blocked_users]
-    return Profile.objects.filter(user__in=filtered_user_ids).order_by('-created_at')
 
 # --------------------------------------
 # Profile-Related Views
 # --------------------------------------
 
-class ProfileViewList(generics.ListAPIView):
+class ProfileListView(generics.ListAPIView):
     """
-    API View to list all profiles. Profile creation is not allowed here since
-    profiles are automatically created when a user registers.
+    API View to list all profiles.
+    Profile creation is not allowed here as profiles are auto-created during user registration.
     """
     serializer_class = ProfileSerializer
     pagination_class = CustomPageNumberPagination
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         """
         Filter out profiles of users who are blocked by or have blocked the current user.
         """
-        queryset = Profile.objects.all().order_by('-created_at')
         user = self.request.user
+        queryset = Profile.objects.all().order_by('-created_at')
         if user.is_authenticated:
             blocked_users = Block.objects.filter(blocker=user).values_list('blocked', flat=True)
             blocked_by_users = Block.objects.filter(blocked=user).values_list('blocker', flat=True)
@@ -51,10 +37,10 @@ class ProfileViewList(generics.ListAPIView):
         return queryset
 
 
-class ProfileDetails(generics.RetrieveUpdateAPIView):
+class ProfileDetailView(generics.RetrieveUpdateAPIView):
     """
-    API View to retrieve or update a profile instance. Deletion is not allowed.
-    Only the owner of a profile can update it.
+    API View to retrieve or update a profile instance.
+    Deletion is not allowed. Only the owner of a profile can update it.
     """
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
@@ -63,8 +49,8 @@ class ProfileDetails(generics.RetrieveUpdateAPIView):
         """
         Exclude profiles of users who have blocked the current user.
         """
-        queryset = Profile.objects.all()
         user = self.request.user
+        queryset = Profile.objects.all()
         if user.is_authenticated:
             blocked_subquery = Block.objects.filter(blocker=OuterRef('user'), blocked=user)
             queryset = queryset.annotate(is_blocked=Exists(blocked_subquery)).exclude(is_blocked=True)
@@ -80,23 +66,13 @@ class ProfileDetails(generics.RetrieveUpdateAPIView):
         return super().update(request, *args, **kwargs)
 
 
-class ProfileUpdateView(generics.UpdateAPIView):
-    """
-    API View to allow a user to update their own profile. Only the owner of a profile can update it.
-    """
-    serializer_class = ProfileUpdateSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_object(self):
-        return self.request.user.profile
-
 # --------------------------------------
 # Follow-Related Views
 # --------------------------------------
 
 class FollowUserView(generics.CreateAPIView):
     """
-    View to allow a user to follow another user.
+    API View to follow a user.
     """
     serializer_class = FollowSerializer
     permission_classes = [IsAuthenticated]
@@ -123,101 +99,50 @@ class FollowUserView(generics.CreateAPIView):
 
 class UnfollowUserView(generics.DestroyAPIView):
     """
-    API View to allow a user to unfollow another user.
+    API View to unfollow a user.
     """
     permission_classes = [IsAuthenticated]
 
     def delete(self, request, *args, **kwargs):
-        # Get the authenticated user (follower)
         follower = request.user
-        # Get the target user (following) using the primary key in the URL
         following = get_object_or_404(CustomUser, pk=self.kwargs.get('pk'))
 
-        # Check if the user is trying to unfollow themselves
         if follower == following:
-            return Response(
-                {'error': 'You cannot unfollow yourself.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'You cannot unfollow yourself.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check if a follow relationship exists
         follow = Follow.objects.filter(follower=follower, following=following)
         if not follow.exists():
-            return Response(
-                {'error': 'You are not following this user.'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({'error': 'You are not following this user.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Delete the follow relationship
         follow.first().delete()
-        return Response(
-            {'success': f'You have successfully unfollowed {following.username}.'},
-            status=status.HTTP_200_OK
-        )
+        return Response({'success': f'You have successfully unfollowed {following.username}.'}, status=status.HTTP_200_OK)
 
 
-class FollowersListAPIView(generics.ListAPIView):
+class FollowersListView(generics.ListAPIView):
+    """
+    API View to list followers of a user.
+    """
     serializer_class = ProfileSerializer
     pagination_class = CustomPageNumberPagination
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user_id = self.kwargs.get('pk')
-        request_user = self.request.user
-        try:
-            user = CustomUser.objects.get(pk=user_id)
-            followers = user.followers.all().values_list('follower', flat=True)
-            return get_filtered_user_profiles(followers, request_user)
-        except CustomUser.DoesNotExist:
-            return Profile.objects.none()
+        user = get_object_or_404(CustomUser, pk=user_id)
+        follower_ids = user.followers.all().values_list('follower', flat=True)
+        return Profile.objects.filter(user__in=follower_ids)
 
 
-class FollowingListAPIView(generics.ListAPIView):
+class FollowingListView(generics.ListAPIView):
+    """
+    API View to list users followed by a user.
+    """
     serializer_class = ProfileSerializer
-    permission_classes = [IsAuthenticated]
     pagination_class = CustomPageNumberPagination
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         user_id = self.kwargs.get('pk')
-        request_user = self.request.user
-        try:
-            user = CustomUser.objects.get(pk=user_id)
-            followings = user.following.all().values_list('following', flat=True)
-            return get_filtered_user_profiles(followings, request_user)
-        except CustomUser.DoesNotExist:
-            return Profile.objects.none()
-
-# --------------------------------------
-# Support Views
-# --------------------------------------
-
-@csrf_exempt
-def support(request):
-    """
-    View for submitting a support request. (Basic form handling)
-    """
-    if request.method == "POST":
-        name = request.POST.get("name")
-        email = request.POST.get("email")
-        message = request.POST.get("message")
-
-        # Optionally, send email to support team (uncomment for actual use)
-        """
-        send_mail(
-            subject=f"Support Request from {name}",
-            message=message,
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=["support@yourwebsite.com"],
-            fail_silently=False,
-        )
-        """
-        # Redirect to a success page
-        return redirect("support_success")
-    return render(request, "support.html")
-
-
-def support_success(request):
-    """
-    View for support success confirmation.
-    """
-    return render(request, "support_success.html")
+        user = get_object_or_404(CustomUser, pk=user_id)
+        following_ids = user.following.all().values_list('following', flat=True)
+        return Profile.objects.filter(user__in=following_ids)

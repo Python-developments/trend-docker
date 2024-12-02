@@ -14,6 +14,7 @@ class Profile(models.Model):
     hide_avatar = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    location = models.CharField(max_length=100, blank=True, null=True)
 
     def save(self, *args, **kwargs):
         if not self.avatar and self.user and self.user.avatar and self.user.avatar.name != 'images/avatar.jpeg':

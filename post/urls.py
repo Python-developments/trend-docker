@@ -4,7 +4,7 @@ from .views import (
     PostList, PostDetail,
     CommentDetail,
     PostComments, CreatePost, CreateComment,  HideOrUnhidePostView,
-    ReactionToggleView,ReactionListView)
+    ReactionToggleView,ReactionListView, PostDelete)
 
 
 urlpatterns = [
@@ -12,6 +12,7 @@ urlpatterns = [
     path('createpost/', CreatePost.as_view(), name='create_post'),
     path('posts-list/', PostList.as_view(), name='post-list'),
     path('<int:pk>/', PostDetail.as_view(), name='post-detail'),
+    path('<int:pk>/delete/', PostDelete.as_view(), name='post-delete'),
 
     # comments endpoints
     path('createcomment/', CreateComment.as_view(), name='create_comment'),

@@ -13,3 +13,5 @@ docker compose -f docker-compose.prod.yml run --rm web python manage.py makemigr
 # trend-docker
 # trend-docker
 # trend-docker
+
+arn:aws:iam::217547175152:user/trend-storage-user
