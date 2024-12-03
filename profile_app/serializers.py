@@ -41,6 +41,10 @@ class ProfileSerializer(serializers.ModelSerializer):
         post_serializer = PostSerializer(page, many=True, context=self.context)
         return post_serializer.data
 
+    def get_posts_count(self, profile):
+        """Return the count of posts for the profile."""
+        return Post.objects.filter(user=profile.user).count()
+
     def get_followers_count(self, profile):
         return profile.user.followers.count()
 
@@ -67,6 +71,7 @@ class ProfileSerializer(serializers.ModelSerializer):
             'location', 'posts_count', 'followers_count', 'following_count',
             'is_following', 'user_posts', 'hide_avatar', 'created_at', 'updated_at',
         )
+
 
 class FollowSerializer(serializers.ModelSerializer):
     follower = serializers.CharField(source='follower.username', read_only=True)
