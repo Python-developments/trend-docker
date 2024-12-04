@@ -6,7 +6,6 @@ from .views import (
     UnfollowUserView,
     FollowersListView,
     FollowingListView,
-    # ProfileUpdateView
 )
 import profile_app.views as views
 
@@ -23,6 +22,6 @@ urlpatterns = [
     path('<int:pk>/following/', FollowingListView.as_view(), name='following-list'),
 
     # Support endpoints
-    # path('support/', views.support, name='support'),
-    # path('support/success/', views.support_success, name='support-success'),
+    path('support/', views.support, name='support'),
+    path('support/success/', views.support_success, name='support-success'),
 ]

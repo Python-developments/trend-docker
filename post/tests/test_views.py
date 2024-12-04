@@ -1,12 +1,10 @@
-# post/tests/test_views.py
-
 from django.test import TestCase
 from django.urls import reverse
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.contrib.auth import get_user_model
 from post.models import Post
 
-User = get_user_model()  # Import the custom user model being used
+User = get_user_model()
 
 class PostUploadTestCase(TestCase):
 

@@ -1,4 +1,4 @@
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, render
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -8,7 +8,6 @@ from .models import Profile, Follow
 from .serializers import ProfileSerializer, FollowSerializer
 from authentication.models import Block, CustomUser
 from authentication.pagination import CustomPageNumberPagination
-
 
 # --------------------------------------
 # Profile-Related Views
@@ -64,7 +63,6 @@ class ProfileDetailView(generics.RetrieveUpdateAPIView):
         if request.user != profile.user:
             raise PermissionDenied("You do not have permission to update this profile.")
         return super().update(request, *args, **kwargs)
-
 
 # --------------------------------------
 # Follow-Related Views
@@ -146,3 +144,12 @@ class FollowingListView(generics.ListAPIView):
         user = get_object_or_404(CustomUser, pk=user_id)
         following_ids = user.following.all().values_list('following', flat=True)
         return Profile.objects.filter(user__in=following_ids)
+
+
+# View for the 'support.html' page
+def support(request):
+    return render(request, 'support.html')
+
+# View for the 'support_success.html' page
+def support_success(request):
+    return render(request, 'support_success.html')

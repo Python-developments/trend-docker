@@ -9,10 +9,6 @@ class PostSerializer(serializers.ModelSerializer):
         model = Post
         fields = ('id', 'content', 'created_at', 'updated_at', 'image')
 
-# class VideoSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Video
-#         fields = ('id', 'title', 'description', 'video', 'thumbnail', 'duration', 'created_at', 'updated_at')
 class ProfileSerializer(serializers.ModelSerializer):
     user_posts = serializers.SerializerMethodField(read_only=True)  # For list view only
     posts_count = serializers.SerializerMethodField(read_only=True)
@@ -24,7 +20,6 @@ class ProfileSerializer(serializers.ModelSerializer):
     avatar = serializers.ImageField(max_length=None, use_url=True, allow_null=True, required=False)
     location = serializers.CharField(allow_blank=True, required=False)
 
-    # Read-only fields
     username = serializers.CharField(source='user.username', read_only=True)
     first_name = serializers.CharField(source='user.first_name', read_only=True)
     last_name = serializers.CharField(source='user.last_name', read_only=True)
