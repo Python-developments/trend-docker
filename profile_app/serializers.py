@@ -57,11 +57,15 @@ class ProfileSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         # user = CustomUser.objects.get(id=instance.user.id)
         user = instance.user
-        phone_number = validated_data['user'].get('phone_number', None)
+        phone_number = validated_data['user'].get('phone_number', None) or instance.user.phone_number
+        first_name = validated_data['user'].get('first_name', None) or instance.user.first_name
+        last_name = validated_data['user'].get('last_name', None) or instance.user.last_name
         if phone_number:
             user.phone_number = phone_number
-        user.first_name = validated_data['user'].get('first_name', instance.user.first_name)
-        user.last_name = validated_data['user'].get('last_name', instance.user.last_name)
+        if first_name:
+            user.first_name = first_name
+        if last_name:
+            user.last_name = last_name
         user.save()
         instance.bio = validated_data.get('bio', instance.bio)
         instance.avatar = validated_data.get('avatar', instance.avatar)
