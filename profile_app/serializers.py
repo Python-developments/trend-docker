@@ -1,32 +1,26 @@
 from rest_framework import serializers
 from .models import Profile, Follow
 from post.models import Post, HiddenPost
-# from vlog.models import Video
 from authentication.pagination import CustomPageNumberPagination
-from authentication.models import CustomUser
 from post.serializers import PostSerializer
-# class PostSerializer(serializers.ModelSerializer):
-#     class Meta:
-#         model = Post
-#         fields = ('id', 'content', 'created_at', 'updated_at', 'image')
 
 class ProfileSerializer(serializers.ModelSerializer):
-    user_posts = serializers.SerializerMethodField(read_only=True)  # For list view only
+    user_posts = serializers.SerializerMethodField(read_only=True)  
     posts_count = serializers.SerializerMethodField(read_only=True)
     followers_count = serializers.SerializerMethodField(read_only=True)
     following_count = serializers.SerializerMethodField(read_only=True)
     is_following = serializers.SerializerMethodField(read_only=True)
 
-    bio = serializers.CharField(allow_blank=True, required=False)  # Editable in update
+    bio = serializers.CharField(allow_blank=True, required=False)  
     avatar = serializers.ImageField(max_length=None, use_url=True, allow_null=True, required=False)
     location = serializers.CharField(allow_blank=True, required=False)
 
-    username = serializers.CharField(source='user.username')
-    first_name = serializers.CharField(source='user.first_name')
-    last_name = serializers.CharField(source='user.last_name')
-    email = serializers.EmailField(source='user.email')
+    username = serializers.CharField(source='user.username', required=False)
+    first_name = serializers.CharField(source='user.first_name', required=False)
+    last_name = serializers.CharField(source='user.last_name', required=False)
+    email = serializers.EmailField(source='user.email', required=False)
     phone_number = serializers.CharField(source='user.phone_number', required=False)
-    
+
     def get_user_posts(self, profile):
         user = self.context['request'].user
         posts = Post.objects.filter(user=profile.user).order_by('-created_at')
@@ -55,22 +49,27 @@ class ProfileSerializer(serializers.ModelSerializer):
         return False
 
     def update(self, instance, validated_data):
-        # user = CustomUser.objects.get(id=instance.user.id)
+        user_data = validated_data.get('user', {})
         user = instance.user
-        phone_number = validated_data['user'].get('phone_number', None) or instance.user.phone_number
-        first_name = validated_data['user'].get('first_name', None) or instance.user.first_name
-        last_name = validated_data['user'].get('last_name', None) or instance.user.last_name
-        if phone_number:
-            user.phone_number = phone_number
-        if first_name:
-            user.first_name = first_name
-        if last_name:
-            user.last_name = last_name
+
+        # Update user fields if provided
+        if 'phone_number' in user_data:
+            user.phone_number = user_data['phone_number']
+        if 'first_name' in user_data:
+            user.first_name = user_data['first_name']
+        if 'last_name' in user_data:
+            user.last_name = user_data['last_name']
         user.save()
-        instance.bio = validated_data.get('bio', instance.bio)
-        instance.avatar = validated_data.get('avatar', instance.avatar)
-        instance.location = validated_data.get('location', instance.location)
+
+        # Update profile fields if provided
+        if 'bio' in validated_data:
+            instance.bio = validated_data['bio']
+        if 'avatar' in validated_data:
+            instance.avatar = validated_data['avatar']
+        if 'location' in validated_data:
+            instance.location = validated_data['location']
         instance.save()
+
         return instance
 
     class Meta:
@@ -89,29 +88,3 @@ class FollowSerializer(serializers.ModelSerializer):
     class Meta:
         model = Follow
         fields = ['id', 'follower', 'following', 'created_at']
-
-# class ProfileUpdateSerializer(serializers.ModelSerializer):
-
-#     bio = serializers.CharField(allow_blank=True, required=False)
-#     avatar = serializers.ImageField(max_length=None, use_url=True, allow_null=True, required=False)
-#     first_name = serializers.CharField(source='user.first_name', read_only=True)
-#     last_name = serializers.CharField(source='user.last_name', read_only=True)
-#     location = serializers.CharField(allow_blank=True, required=False)
-#     email = serializers.EmailField(source='user.email', read_only=True)
-#     username = serializers.CharField(source='user.username', read_only=True)
-
-#     def validate_avatar(self, value):
-#         if value.size > 5 * 1024 * 1024:
-#             raise serializers.ValidationError("Avatar file size exceeds 5 MB.")
-#         return value
-
-#     class Meta:
-#         model = Profile
-#         fields = ('bio', 'avatar', 'first_name', 'last_name', 'email', 'username', 'location')
-
-#     def update(self, instance, validated_data):
-#         instance.bio = validated_data.get('bio', instance.bio)
-#         instance.avatar = validated_data.get('avatar', instance.avatar)
-#         instance.location = validated_data.get('location', instance.location)
-#         instance.save()
-#         return instance
