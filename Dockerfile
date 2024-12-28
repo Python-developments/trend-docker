@@ -20,7 +20,7 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
 # Create a directory for our workspace.
-RUN mkdir /workspace/
+RUN mkdir -p /workspace
 WORKDIR /workspace/
 
 
@@ -28,8 +28,8 @@ WORKDIR /workspace/
 # Install python requirements without storing wheels.
 RUN mkdir ./requirements/
 COPY ./requirements/base.txt \
-     ./requirements/dev.txt  \
-     ./requirements/
+    ./requirements/dev.txt  \
+    ./requirements/
 RUN pip install --no-cache-dir --upgrade pip
 RUN pip install --no-cache-dir -r ./requirements/dev.txt
 # Copy project source to the container.

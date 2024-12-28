@@ -18,37 +18,31 @@ from .serializers import (CreateCommentSerializer,
 from rest_framework.permissions import IsAuthenticated
 from authentication.models import Block, CustomUser
 
-
-# Create Post view
 class CreatePost(generics.CreateAPIView):
     queryset = Post.objects.all()
     serializer_class = CreatePostSerializer
     permission_classes = [IsAuthenticated]
 
-    # need adjustment: Overriding `perform_create` may not be necessary if user assignment is handled in the serializer's `create` method.
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
-
-    # need adjustment: Overriding the `create` method is unnecessary unless you need custom response data.
-    # If you need additional fields in the response, consider including them in the serializer.
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        instance = serializer.instance
+        serializer.is_valid(raise_exception=True)  # Validate the input data
 
-        # need adjustment: Accessing `instance.image.url` can raise an error if `image` is None.
-        # Adjust to handle cases where `image` might not be provided.
+        # Save the instance using the serializer
+        instance = serializer.save()
+
+        # Build response data
         response_data = {
             "id": instance.id,
-            "image": instance.image.url if instance.image else None,  # Adjusted to handle None case.
+            "image": instance.image.url if instance.image else None,  # Handle missing image
             "content": instance.content,
             "username": instance.user.username,
+            "height": instance.height,
+            "width": instance.width,
             "created_at": instance.created_at,
             "updated_at": instance.updated_at,
         }
-        return Response(response_data, status=status.HTTP_201_CREATED)
 
+        return Response(response_data, status=status.HTTP_201_CREATED)
 
 
 

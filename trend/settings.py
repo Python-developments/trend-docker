@@ -217,12 +217,12 @@ CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Print settings to verify
-print(f"Debug Mode: {DEBUG}")
-print(f"Allowed Hosts: {ALLOWED_HOSTS}")
-print(f"Using S3: {USE_S3}")
-print(f"Static URL: {STATIC_URL}")
-print(f"Media URL: {MEDIA_URL}")
+# # Print settings to verify
+# print(f"Debug Mode: {DEBUG}")
+# print(f"Allowed Hosts: {ALLOWED_HOSTS}")
+# print(f"Using S3: {USE_S3}")
+# print(f"Static URL: {STATIC_URL}")
+# print(f"Media URL: {MEDIA_URL}")
 # Other settings...
 
 # Maximum video file size in bytes (e.g., 200MB)

@@ -1,4 +1,6 @@
 from rest_framework import serializers
+
+from authentication.models import CustomUser
 from .models import Post, Comment, HiddenPost
 from django.db.models import Count
 from reactions.models import Reaction
@@ -76,7 +78,7 @@ class PostSerializer(serializers.ModelSerializer):
             'id', 'custom_user_id', 'profile_id', 'username', 'avatar', 'image', 'content',
             'created_at', 'updated_at', 'like_counter', 'comment_counter', 'liked',
             'user_reaction', 'total_reaction_count', 'reactions_list',
-            'reaction_list_count', 'top_3_reactions'
+            'reaction_list_count', 'top_3_reactions','height', 'width',
         )
 
     def get_like_counter(self, obj):
@@ -155,15 +157,34 @@ class LikeToggleSerializer(serializers.Serializer):
     post_id = serializers.PrimaryKeyRelatedField(queryset=Post.objects.all())
 
 
+# class CreatePostSerializer(serializers.ModelSerializer):
+#     class Meta:
+#         model = Post
+#         fields = ('id', 'image', 'content', 'created_at', 'updated_at')
+
+#     def create(self, validated_data):
+#         request = self.context.get('request')
+#         validated_data['user'] = request.user
+#         return super().create(validated_data)
+
 class CreatePostSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(write_only=True)  # Accept username in the request
+    height = serializers.FloatField(required=True)     # Ensure height is required
+    width = serializers.FloatField(required=True)      # Ensure width is required
+
     class Meta:
         model = Post
-        fields = ('id', 'image', 'content', 'created_at', 'updated_at')
+        fields = ('id', 'image', 'content', 'height', 'width', 'username', 'created_at', 'updated_at')
 
     def create(self, validated_data):
-        request = self.context.get('request')
-        validated_data['user'] = request.user
+        # Fetch user based on the provided username
+        username = validated_data.pop('username')
+        user = CustomUser.objects.get(username=username)
+
+        # Assign the user and create the post
+        validated_data['user'] = user
         return super().create(validated_data)
+
 
 
 class CreateCommentSerializer(serializers.ModelSerializer):

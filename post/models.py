@@ -12,6 +12,8 @@ class Post(models.Model):
     content = models.CharField(max_length=1000, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    height = models.FloatField(null=True, blank=True)  # Add height
+    width = models.FloatField(null=True, blank=True)  # Add width
 
     def __str__(self) -> str:
         return f"{self.content[:20]}" if self.content else "No Content"
