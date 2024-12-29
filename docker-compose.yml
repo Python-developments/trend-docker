@@ -76,14 +76,14 @@
 # volumes:
 #   postgres-data:
 #   static-files:
-
 version: '3.8'
 
 services:
   web:
     container_name: trend-backend
     build:
-      dockerfile: Dockerfile  
+      context: .
+      dockerfile: Dockerfile
     command: bash -c "python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
     env_file:
       - .env
@@ -96,9 +96,11 @@ services:
     depends_on:
       postgres-db:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   postgres-db:
-    container_name: trend-backend-postgres-db-new
+    container_name: trend-backend-postgres-db
     image: postgis/postgis:14-3.4
     volumes:
       - postgres-data:/var/lib/postgresql/data/
@@ -109,11 +111,10 @@ services:
     restart: on-failure
     healthcheck:
       test: [ "CMD", "pg_isready", "-h", "localhost", "-p", "5432", "-d", "$POSTGRES_DB", "-U", "$POSTGRES_USER" ]
-      interval: 0.5s
+      interval: 1s
       timeout: 5s
       retries: 20
       start_period: 10s
-    user: "postgres"  # Ensure PostgreSQL runs with the correct user permissions
 
   redis:
     container_name: trend-backend-redis
@@ -124,7 +125,8 @@ services:
   celery:
     container_name: trend-backend-celery
     build:
-      dockerfile: Dockerfile  
+      context: .
+      dockerfile: Dockerfile
     volumes:
       - ./:/workspace/trend-backend/
     command: celery -A trend worker -l info --logfile=celery.log
@@ -140,7 +142,8 @@ services:
   celery-beat:
     container_name: trend-backend-celery-beat
     build:
-      dockerfile: Dockerfile  
+      context: .
+      dockerfile: Dockerfile
     command: celery -A trend beat -l info --logfile=celery_beat.log
     volumes:
       - ./:/workspace/trend-backend/
