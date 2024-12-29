@@ -3,7 +3,8 @@ version: '3.8'
 services:
   web:
     container_name: trend-backend
-    # image: "trend-backend/api"
+    image: "trend-backend/api"
+    context: .
     build:
       dockerfile: Dockerfile
     command: bash -c "python manage.py makemigrations && python manage.py migrate && python manage.py runserver 0.0.0.0:8000"
